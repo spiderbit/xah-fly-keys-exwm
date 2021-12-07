@@ -4,6 +4,8 @@
 
 ;; Author: Xah Lee ( http://xahlee.info/ )
 ;; Version: 12.4.20200925000221
+;; Package-Version: 20200925.702
+;; Package-Commit: 0fd1a4537d505960b2e942f3d8d88a76a84c2f2f
 ;; Created: 10 Sep 2013
 ;; Package-Requires: ((emacs "24.1"))
 ;; Keywords: convenience, emulations, vim, ergoemacs
@@ -3325,6 +3327,21 @@ by this map.
 Effectively, this map takes precedence over all others when command mode
 is enabled.")
 
+(defvar xah-fly-exwm-command-map (cons 'keymap xah-fly-shared-map)
+  "Keymap that takes precedence over all other keymaps in command mode.
+
+Inherits bindings from `xah-fly-shared-map'. In command mode, if no binding
+is found in this map `xah-fly-shared-map' is checked, then if there is
+still no binding, the other active keymaps are checked like normal. However,
+if a key is explicitly bound to nil in this map, it will not be looked
+up in `xah-fly-shared-map' and lookup will skip directly to the normally
+active maps. In this way, bindings in `xah-fly-shared-map' can be disabled
+by this map.
+
+Effectively, this map takes precedence over all others when command mode
+is enabled.")
+
+
 (defvar xah-fly-insert-map (cons 'keymap xah-fly-shared-map)
   "Keymap for bindings that will be checked in insert mode. Active whenever
 `xah-fly-keys' is non-nil.
@@ -3346,6 +3363,58 @@ minor modes loaded later may override bindings in this map.")
 ;; setting keys
 
 (xah-fly--define-keys
+ xah-fly-exwm-command-map
+ '(
+   ("~" . nil)
+   (":" . nil)
+   ("SPC" . xah-fly-leader-key-map)
+   ("DEL" . xah-fly-leader-key-map)
+
+   ("1" . nil)
+   ("2" . nil)
+   ("3" . nil)
+   ("4" . nil)
+   ("5" . nil)
+   ("6" . nil)
+   ("7" . nil)
+   ("8" . nil)
+   ("9" . nil)
+   ("0" . nil)
+
+   ;; ("a" . nil)
+   ("b" . nil)
+   ("c" . nil)
+   ("d" . nil)
+   ("e" . nil)
+   ("f" . nil)
+   ("g" . nil)
+   ("h" . nil)
+   ("i" . nil)
+   ("j" . nil)
+   ("k" . nil)
+   ;; ("l" . xah-fly-insert-mode-activate-space-before)
+   ("l" . nil)
+   ("m" . nil)
+   ("n" . nil)
+   ("o" . nil)
+   ("p" . nil)
+   ("q" . nil)
+   ("r" . nil)
+   ("s" . nil)
+   ("t" . nil)
+   ;; ("u" . nil)
+   ("v" . nil)
+   ;; ("w" . nil)
+   ("x" . nil)
+   ("y" . nil)
+   ("z" . nil)
+   ("`" . other-frame)
+   ("a" . xah-fly-M-x)
+   ("u" . xah-fly-insert-mode-activate)
+   ("w" . xah-next-window-or-frame)))
+
+
+(xah-fly--define-keys
  xah-fly-command-map
  '(
    ("~" . nil)
@@ -3353,7 +3422,7 @@ minor modes loaded later may override bindings in this map.")
 
    ("SPC" . xah-fly-leader-key-map)
    ("DEL" . xah-fly-leader-key-map)
-
+   ("/" . nil)
    ("'" . xah-reformat-lines)
    ("," . xah-shrink-whitespaces)
    ("-" . xah-cycle-hyphen-underscore-space)
@@ -3362,7 +3431,7 @@ minor modes loaded later may override bindings in this map.")
    ("/" . hippie-expand)
    ("\\" . nil)
    ;; ("=" . xah-forward-equal-sign)
-   ("[" . xah-backward-punct )
+   ("[" . xah-backward-punct)
    ("]" . xah-forward-punct)
    ("`" . other-frame)
 
@@ -3425,9 +3494,7 @@ minor modes loaded later may override bindings in this map.")
  '(("<home>" . xah-fly-command-mode-activate)
    ("<menu>" . xah-fly-command-mode-activate)
    ("<f8>" . xah-fly-command-mode-activate-no-hook)
-
    ("<f9>" . xah-fly-leader-key-map)
-
    ("<f11>" . xah-previous-user-buffer)
    ("<f12>" . xah-next-user-buffer)
    ("<C-f11>" . xah-previous-emacs-buffer)
@@ -3990,7 +4057,9 @@ minor modes loaded later may override bindings in this map.")
 (defun xah-fly--update-key-map ()
   (setq xah-fly-key-map (if xah-fly-insert-state-q
                             xah-fly-insert-map
-                          xah-fly-command-map)))
+			  (if (eq major-mode 'exwm-mode)
+			      xah-fly-exwm-command-map
+                            xah-fly-command-map))))
 
 (defun xah-fly-keys-set-layout (@layout)
   "Set a keyboard layout.
@@ -4024,51 +4093,66 @@ Version 2020-04-28"
   (interactive)
   (setq xah-fly-insert-state-q nil)
   (xah-fly--update-key-map)
-  (setq xah-fly--deactivate-command-mode-func
-        (set-transient-map xah-fly-command-map (lambda () t)))
+  (let ((map
+	 (if (eq major-mode 'exwm-mode)
+	     xah-fly-exwm-command-map
+	   xah-fly-command-map)))
+    (setq xah-fly--deactivate-command-mode-func
+	  (set-transient-map map (lambda () t))))
   (modify-all-frames-parameters (list (cons 'cursor-type 'box)))
   (setq mode-line-front-space "C")
   (force-mode-line-update))
 
-(defun xah-fly-space-key ()
-  "Switch to command mode if the char before cursor is a space.
+;;   (defun xah-fly-command-mode-init ()
+;;     "Set command mode keys.
+;; Version 2020-04-28"
+;;     (interactive)
+;;     (setq xah-fly-insert-state-q nil)
+;;     (xah-fly--update-key-map)
+;;     (setq xah-fly--deactivate-command-mode-func (set-transient-map xah-fly-command-map (lambda () t)))
+;;     (modify-all-frames-parameters (list (cons 'cursor-type 'box)))
+;;     (setq mode-line-front-space "C")
+;;     (force-mode-line-update))
+
+  (defun xah-fly-space-key ()
+    "Switch to command mode if the char before cursor is a space.
 experimental
 Version 2018-05-07"
-  (interactive)
-  (if (eq (char-before ) 32)
-      (xah-fly-command-mode-activate)
-    (insert " ")))
+    (interactive)
+    (if (eq (char-before ) 32)
+	(xah-fly-command-mode-activate)
+      (insert " ")))
 
-(defun xah-fly-insert-mode-init (&optional no-indication)
-  "Enter insertion mode."
-  (interactive)
-  (setq xah-fly-insert-state-q t)
-  (xah-fly--update-key-map)
-  (funcall xah-fly--deactivate-command-mode-func)
-  (unless no-indication
-    (modify-all-frames-parameters '((cursor-type . bar)))
-    (setq mode-line-front-space "I"))
-  (force-mode-line-update))
+  (defun xah-fly-insert-mode-init (&optional no-indication)
+    "Enter insertion mode."
+    (interactive)
+    (setq xah-fly-insert-state-q t)
+    (xah-fly--update-key-map)
+    (funcall xah-fly--deactivate-command-mode-func)
+    (unless no-indication
+      (modify-all-frames-parameters '((cursor-type . bar)))
+      (setq mode-line-front-space "I"))
+    (force-mode-line-update))
 
-(defun xah-fly-mode-toggle ()
-  "Switch between {insertion, command} modes."
-  (interactive)
-  (if xah-fly-insert-state-q
-      (xah-fly-command-mode-activate)
-    (xah-fly-insert-mode-activate)))
+  (defun xah-fly-mode-toggle ()
+    "Switch between {insertion, command} modes."
+    (interactive)
+    (if xah-fly-insert-state-q
+	(xah-fly-command-mode-activate)
+      (xah-fly-insert-mode-activate)))
 
-(defun xah-fly-save-buffer-if-file ()
-  "Save current buffer if it is a file."
-  (interactive)
-  (when (buffer-file-name)
-    (save-buffer)))
+  (defun xah-fly-save-buffer-if-file ()
+    "Save current buffer if it is a file."
+    (interactive)
+    (when (buffer-file-name)
+      (save-buffer)))
 
-(defun xah-fly-command-mode-activate ()
-  "Activate command mode and run `xah-fly-command-mode-activate-hook'
+  (defun xah-fly-command-mode-activate ()
+    "Activate command mode and run `xah-fly-command-mode-activate-hook'
 Version 2017-07-07"
-  (interactive)
-  (xah-fly-command-mode-init)
-  (run-hooks 'xah-fly-command-mode-activate-hook))
+    (interactive)
+    (xah-fly-command-mode-init)
+    (run-hooks 'xah-fly-command-mode-activate-hook))
 
 (defun xah-fly-command-mode-activate-no-hook ()
   "Activate command mode. Does not run `xah-fly-command-mode-activate-hook'
@@ -4128,6 +4212,7 @@ URL `http://ergoemacs.org/misc/ergoemacs_vi_mode.html'"
         (add-hook 'isearch-mode-end-hook 'xah-fly-command-mode-activate)
         (when (and (keymapp xah-fly-key-map)
                    (not (memq xah-fly-key-map (list xah-fly-command-map
+						    xah-fly-exwm-command-map
                                                     xah-fly-insert-map))))
           (set-keymap-parent xah-fly-key-map xah-fly-shared-map)
           (setq xah-fly-shared-map xah-fly-key-map))
@@ -4147,4 +4232,3 @@ URL `http://ergoemacs.org/misc/ergoemacs_vi_mode.html'"
 
 (provide 'xah-fly-keys)
 
-;;; xah-fly-keys.el ends here
